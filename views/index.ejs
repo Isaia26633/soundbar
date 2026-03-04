@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soundbar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <!-- ===== HEADER ===== -->
+  <header>
+    <span class="logo">&#9654;&nbsp;Soundbar</span>
+    <div class="theme-controls">
+      <div class="theme-toggle" role="group" aria-label="Theme">
+        <button id="theme-dark" class="active">DARK</button>
+        <button id="theme-light">LIGHT</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== SEARCH BAR ===== -->
+  <div class="controls-bar">
+    <div class="search-group">
+      <input type="text" id="search" placeholder="Search sounds..." autocomplete="off">
+    </div>
+  </div>
+
+  <!-- ===== MAIN ===== -->
+  <main>
+    <div class="sound-grid">
+      <button class="sound-btn" data-sound="airhorn.mp3"><span class="label">Air Horn</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="bruh.mp3"><span class="label">Bruh</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="oof.mp3"><span class="label">Oof</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="vine_boom.mp3"><span class="label">Vine Boom</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="sad_trombone.mp3"><span class="label">Sad Trombone</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="emotional_damage.mp3"><span class="label">Emotional Damage</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="alert.mp3"><span class="label">Alert</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="ding.mp3"><span class="label">Ding</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="error.mp3"><span class="label">Error</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="success.mp3"><span class="label">Success</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="dramatic.mp3"><span class="label">Dramatic</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="suspense.mp3"><span class="label">Suspense</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="victory.mp3"><span class="label">Victory</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="fail.mp3"><span class="label">Fail</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="explosion.mp3"><span class="label">Explosion</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="laser.mp3"><span class="label">Laser</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="punch.mp3"><span class="label">Punch</span><span class="play-bar"></span></button>
+      <button class="sound-btn" data-sound="thunder.mp3"><span class="label">Thunder</span><span class="play-bar"></span></button>
+    </div>
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer>
+    SOUNDBAR &mdash; Add your .mp3 files to public/sounds/
+  </footer>
+
+  <script src="/js/main.js"></script>
+</body>
+</html>
