@@ -8,7 +8,7 @@ const session = require('express-session');
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(session({
-  secret: 'your-secret-key',
+  secret: 'secetnobodywillknowthisonebecauseitsocool',
   resave: false,
   saveUninitialized: false
 }));
