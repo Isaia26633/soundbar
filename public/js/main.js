@@ -45,7 +45,11 @@ function attachAudioLogic(btn) {
   const file = btn.dataset.sound;
   if (!file) return;
 
+  let cooldown = false;
+
   btn.addEventListener('click', () => {
+    if (cooldown) return;
+
     const wasPlaying = btn.classList.contains('playing');
 
     // Clear playing state from all buttons
@@ -53,7 +57,12 @@ function attachAudioLogic(btn) {
 
     if (wasPlaying) return; // second click just clears the highlight
 
+    cooldown = true;
     btn.classList.add('playing');
+    setTimeout(() => {
+      cooldown = false;
+      btn.classList.remove('playing');
+    }, 2000);
 
     fetch('/api/play', {
       method: 'POST',
