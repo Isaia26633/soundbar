@@ -23,47 +23,96 @@ setTheme(localStorage.getItem('sb-theme') || 'dark');
 
 
 // --- Active Audio Tracking ---
-const activeAudios = new Set();
 
 
-// --- Sound Button Logic ---
-document.querySelectorAll('.sound-btn').forEach(btn => {
+// --- Label Formatter ---
+// Strips the file extension and converts the filename into a readable label.
+// e.g. "mlgairhorn.wav" -> "Mlgairhorn", "john_cena.wav" -> "John Cena"
+function formatLabel(filename) {
+  return filename
+    .replace(/\.(wav|mp3)$/i, '')  // strip extension
+    .replace(/_/g, ' ')            // underscores -> spaces
+    .replace(/([a-z])([A-Z])/g, '$1 $2') // camelCase -> words
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+    .trim();
+}
+
+
+// --- Attach Audio Logic to a Button ---
+function attachAudioLogic(btn) {
   const file = btn.dataset.sound;
   if (!file) return;
 
-  const audio = new Audio(`/sounds/${file}`);
-  const bar = btn.querySelector('.play-bar');
-
-  audio.addEventListener('timeupdate', () => {
-    if (audio.duration && bar) {
-      bar.style.width = (audio.currentTime / audio.duration * 100) + '%';
-    }
-  });
-
-  audio.addEventListener('ended', () => {
-    btn.classList.remove('playing');
-    if (bar) bar.style.width = '0%';
-    activeAudios.delete(audio);
-  });
-
   btn.addEventListener('click', () => {
-    if (!audio.paused) {
-      audio.pause();
-      audio.currentTime = 0;
-      btn.classList.remove('playing');
-      if (bar) bar.style.width = '0%';
-      activeAudios.delete(audio);
-    } else {
-      audio.currentTime = 0;
-      audio.play().catch(() => {
+    const wasPlaying = btn.classList.contains('playing');
+
+    // Clear playing state from all buttons
+    document.querySelectorAll('.sound-btn.playing').forEach(b => b.classList.remove('playing'));
+
+    if (wasPlaying) return; // second click just clears the highlight
+
+    btn.classList.add('playing');
+
+    fetch('/api/play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sfx: file })
+    })
+    .then(res => {
+      if (!res.ok) {
+        btn.classList.remove('playing');
         btn.style.borderColor = 'red';
         setTimeout(() => (btn.style.borderColor = ''), 800);
-      });
-      btn.classList.add('playing');
-      activeAudios.add(audio);
-    }
+      }
+    })
+    .catch(() => {
+      btn.classList.remove('playing');
+      btn.style.borderColor = 'red';
+      setTimeout(() => (btn.style.borderColor = ''), 800);
+    });
   });
-});
+}
+
+
+// --- Fetch Sounds from backend proxy ---
+function fetchSounds() {
+  return fetch('/api/sounds')
+    .then(response => response.json())
+    .then(data => data.sfx || [])
+    .catch(err => {
+      console.log('connection closed due to errors:', err);
+      return [];
+    });
+}
+
+
+// --- Build Sound Grid ---
+function buildSoundGrid(sfxList) {
+  const grid = document.querySelector('.sound-grid');
+
+  sfxList
+    .filter(filename => filename !== 'disabled')
+    .forEach(filename => {
+      const btn = document.createElement('button');
+      btn.className = 'sound-btn';
+      btn.dataset.sound = filename;
+
+      const labelEl = document.createElement('span');
+      labelEl.className = 'label';
+      labelEl.textContent = formatLabel(filename);
+
+      const barEl = document.createElement('span');
+      barEl.className = 'play-bar';
+
+      btn.appendChild(labelEl);
+      btn.appendChild(barEl);
+      grid.appendChild(btn);
+
+      attachAudioLogic(btn);
+    });
+}
 
 
 // --- Search Filter ---
@@ -74,3 +123,7 @@ document.getElementById('search').addEventListener('input', function () {
     btn.classList.toggle('hidden', q !== '' && !label.includes(q));
   });
 });
+
+
+// --- Init ---
+fetchSounds().then(buildSoundGrid);
