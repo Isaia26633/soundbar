@@ -8,6 +8,13 @@ const session = require('express-session');
 const FORMPIX_URL = process.env.formpixUrl;
 const API_KEY = process.env.apiKey;
 
+if (!FORMPIX_URL || !FORMPIX_URL.startsWith('http')) {
+  console.error(`[Config] ERROR: formpixUrl is invalid or missing: "${FORMPIX_URL}"`);
+  console.error('[Config] Check your .env file — it should be: formpixUrl=http://localhost:421');
+} else {
+  console.log(`[Config] Formpix URL: ${FORMPIX_URL}`);
+}
+
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(express.json());
