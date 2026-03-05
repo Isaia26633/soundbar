@@ -70,7 +70,12 @@ function attachAudioLogic(btn) {
       body: JSON.stringify({ sfx: file })
     })
     .then(res => {
-      if (!res.ok) {
+      if (res.status === 200) {
+        alert('Sound played successfully!');
+      } else if (res.status === 429) {
+        btn.classList.remove('playing');
+        alert('Sound could not be played because another sound is already playing. Please try again later.');
+      } else {
         btn.classList.remove('playing');
         btn.style.borderColor = 'red';
         setTimeout(() => (btn.style.borderColor = ''), 800);
