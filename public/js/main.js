@@ -22,17 +22,12 @@ btnLight.addEventListener('click', () => setTheme('light'));
 setTheme(localStorage.getItem('sb-theme') || 'dark');
 
 
-// --- Active Audio Tracking ---
-
-
 // --- Label Formatter ---
-// Strips the file extension and converts the filename into a readable label.
-// e.g. "mlgairhorn.wav" -> "Mlgairhorn", "john_cena.wav" -> "John Cena"
 function formatLabel(filename) {
   return filename
-    .replace(/\.(wav|mp3)$/i, '')  // strip extension
-    .replace(/_/g, ' ')            // underscores -> spaces
-    .replace(/([a-z])([A-Z])/g, '$1 $2') // camelCase -> words
+    .replace(/\.(wav|mp3)$/i, '')
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
     .split(' ')
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ')
@@ -40,7 +35,128 @@ function formatLabel(filename) {
 }
 
 
-// --- Attach Audio Logic to a Button ---
+// --- Payment Modal ---
+const payModal      = document.getElementById('pay-modal');
+const payPin        = document.getElementById('pay-pin');
+const payError      = document.getElementById('pay-error');
+const payModalSound = document.getElementById('pay-modal-sound');
+const payConfirm    = document.getElementById('pay-confirm');
+const payCancel     = document.getElementById('pay-cancel');
+
+let pendingSfx = null;
+let pendingBtn = null;
+
+function openPayModal(file, btn) {
+  pendingSfx = file;
+  pendingBtn = btn;
+  payModalSound.textContent = formatLabel(file);
+  payPin.value = '';
+  payError.style.display = 'none';
+  payModal.style.display = 'flex';
+  payPin.focus();
+}
+
+function closePayModal() {
+  payModal.style.display = 'none';
+  if (pendingBtn) {
+    pendingBtn.classList.remove('playing');
+    pendingBtn = null;
+  }
+  pendingSfx = null;
+}
+
+payCancel?.addEventListener('click', closePayModal);
+payModal?.addEventListener('click', (e) => { if (e.target === payModal) closePayModal(); });
+payPin?.addEventListener('keydown', (e) => { if (e.key === 'Enter') payConfirm.click(); });
+
+payConfirm?.addEventListener('click', async () => {
+  const pin = payPin.value.trim();
+  if (!pin) {
+    payError.textContent = 'Please enter your PIN.';
+    payError.style.display = 'block';
+    return;
+  }
+
+  payConfirm.disabled = true;
+  payConfirm.textContent = 'Processing...';
+  payError.style.display = 'none';
+
+  console.log('[Pay] Submitting payment for:', pendingSfx);
+  try {
+    const res = await fetch('/api/play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sfx: pendingSfx, pin })
+    });
+    console.log('[Pay] Response:', res.status, res.statusText);
+
+    if (res.status === 200) {
+      payModal.style.display = 'none';
+      if (pendingBtn) {
+        pendingBtn.classList.add('playing');
+        const played = pendingBtn;
+        setTimeout(() => played.classList.remove('playing'), 2000);
+      }
+      pendingSfx = null;
+      pendingBtn = null;
+    } else if (res.status === 429) {
+      payError.textContent = 'Another sound is already playing. Try again later.';
+      payError.style.display = 'block';
+      if (pendingBtn) pendingBtn.classList.remove('playing');
+    } else {
+      const data = await res.json().catch(() => ({}));
+      payError.textContent = data.error || 'Payment failed. Please try again.';
+      payError.style.display = 'block';
+      if (pendingBtn) pendingBtn.classList.remove('playing');
+    }
+  } catch {
+    payError.textContent = 'Network error. Please try again.';
+    payError.style.display = 'block';
+    if (pendingBtn) pendingBtn.classList.remove('playing');
+  } finally {
+    payConfirm.disabled = false;
+    payConfirm.textContent = 'Pay & Play';
+  }
+});
+
+
+// --- Owner Play (no payment) ---
+async function ownerPlay(file, btn) {
+  const wasPlaying = btn.classList.contains('playing');
+  document.querySelectorAll('.sound-btn.playing').forEach(b => b.classList.remove('playing'));
+  if (wasPlaying) return;
+
+  btn.classList.add('playing');
+  setTimeout(() => btn.classList.remove('playing'), 2000);
+
+  console.log('[Play] Owner play:', file);
+  try {
+    const res = await fetch('/api/play', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sfx: file })
+    });
+    console.log('[Play] Response:', res.status, res.statusText);
+    if (res.status === 429) {
+      btn.classList.remove('playing');
+      alert('Another sound is already playing. Try again later.');
+    } else if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      console.error('[Play] Error from server:', data);
+      btn.classList.remove('playing');
+      btn.style.borderColor = 'red';
+      setTimeout(() => (btn.style.borderColor = ''), 800);
+    }
+  } catch (err) {
+    console.error('[Play] Network error:', err);
+    btn.classList.remove('playing');
+    btn.style.borderColor = 'red';
+    setTimeout(() => (btn.style.borderColor = ''), 800);
+  }
+}
+
+
+// --- Attach Button Logic ---
 function attachAudioLogic(btn) {
   const file = btn.dataset.sound;
   if (!file) return;
@@ -49,54 +165,35 @@ function attachAudioLogic(btn) {
 
   btn.addEventListener('click', () => {
     if (cooldown) return;
-
-    const wasPlaying = btn.classList.contains('playing');
-
-    // Clear playing state from all buttons
-    document.querySelectorAll('.sound-btn.playing').forEach(b => b.classList.remove('playing'));
-
-    if (wasPlaying) return; // second click just clears the highlight
-
     cooldown = true;
-    btn.classList.add('playing');
-    setTimeout(() => {
-      cooldown = false;
-      btn.classList.remove('playing');
-    }, 2000);
+    setTimeout(() => { cooldown = false; }, 2000);
 
-    fetch('/api/play', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sfx: file })
-    })
-    .then(res => {
-      if (res.status === 200) {
-        alert('Sound played successfully!');
-      } else if (res.status === 429) {
-        btn.classList.remove('playing');
-        alert('Sound could not be played because another sound is already playing. Please try again later.');
-      } else {
-        btn.classList.remove('playing');
-        btn.style.borderColor = 'red';
-        setTimeout(() => (btn.style.borderColor = ''), 800);
-      }
-    })
-    .catch(() => {
-      btn.classList.remove('playing');
-      btn.style.borderColor = 'red';
-      setTimeout(() => (btn.style.borderColor = ''), 800);
-    });
+    if (window.IS_OWNER) {
+      ownerPlay(file, btn);
+    } else {
+      openPayModal(file, btn);
+    }
   });
 }
 
 
-// --- Fetch Sounds from backend proxy ---
+// --- Fetch Sounds from backend ---
 function fetchSounds() {
+  console.log('[Sounds] Fetching /api/sounds...');
   return fetch('/api/sounds')
-    .then(response => response.json())
-    .then(data => data.sfx || [])
+    .then(response => {
+      console.log('[Sounds] Response status:', response.status, response.statusText);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      console.log('[Sounds] Raw data from server:', data);
+      const sfx = data.sfx || [];
+      console.log(`[Sounds] ${sfx.length} SFX found:`, sfx);
+      return sfx;
+    })
     .catch(err => {
-      console.log('connection closed due to errors:', err);
+      console.error('[Sounds] Failed to fetch sounds:', err);
       return [];
     });
 }
@@ -104,7 +201,9 @@ function fetchSounds() {
 
 // --- Build Sound Grid ---
 function buildSoundGrid(sfxList) {
+  console.log('[Grid] Building grid with', sfxList.length, 'sounds');
   const grid = document.querySelector('.sound-grid');
+  if (!grid) { console.error('[Grid] .sound-grid element not found in DOM!'); return; }
 
   sfxList
     .filter(filename => filename !== 'disabled')
@@ -141,3 +240,4 @@ document.getElementById('search').addEventListener('input', function () {
 
 // --- Init ---
 fetchSounds().then(buildSoundGrid);
+

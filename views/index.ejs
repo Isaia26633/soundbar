@@ -15,18 +15,31 @@
   <!-- ===== HEADER ===== -->
   <header>
     <span class="logo">&#9654;&nbsp;Soundbar</span>
-    <div class="theme-controls">
+    <div class="header-right">
       <div class="theme-toggle" role="group" aria-label="Theme">
         <button id="theme-dark" class="active">DARK</button>
         <button id="theme-light">LIGHT</button>
       </div>
+      <div class="user-info">
+        <span class="username">
+          <%= user %><% if (owner) { %>&nbsp;<span class="owner-badge">OWNER</span><% } %>
+        </span>
+        <a href="/logout" class="logout-btn">Logout</a>
+      </div>
     </div>
   </header>
 
-  <!-- ===== SEARCH BAR ===== -->
+  <!-- ===== CONTROLS BAR ===== -->
   <div class="controls-bar">
     <div class="search-group">
       <input type="text" id="search" placeholder="Search sounds..." autocomplete="off">
+    </div>
+    <div class="price-badge">
+      <% if (owner) { %>
+        <span class="owner-free">&#9733; Owner &mdash; Free Plays</span>
+      <% } else { %>
+        <span>Cost: <strong><%= price %> Digipogs</strong> per sound</span>
+      <% } %>
     </div>
   </div>
 
@@ -37,6 +50,30 @@
     </div>
   </main>
 
+  <!-- ===== PAYMENT MODAL ===== -->
+  <div id="pay-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <h3>Pay to Play</h3>
+      <p id="pay-modal-sound" class="modal-sound-name"></p>
+      <p class="pay-cost">Cost: <strong><%= price %> Digipogs</strong></p>
+      <div class="modal-field">
+        <label for="pay-pin">Digipog PIN</label>
+        <input type="password" id="pay-pin" inputmode="numeric" maxlength="6"
+          placeholder="Enter your PIN"
+          oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+      </div>
+      <p id="pay-error" class="pay-error" style="display:none;"></p>
+      <div class="modal-actions">
+        <button id="pay-cancel" class="btn-secondary">Cancel</button>
+        <button id="pay-confirm" class="btn-primary">Pay &amp; Play</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.IS_OWNER    = <%- JSON.stringify(owner) %>;
+    window.SOUND_PRICE = <%- JSON.stringify(price) %>;
+  </script>
   <script src="/js/main.js"></script>
 </body>
 </html>

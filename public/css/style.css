@@ -271,3 +271,211 @@ footer {
   .sound-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
   .search-group input { max-width: 100%; }
 }
+
+/* ===== HEADER RIGHT (theme + user) ===== */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* ===== USER INFO ===== */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.username {
+  font-family: var(--header-font);
+  font-size: 0.6rem;
+  letter-spacing: 1px;
+  color: var(--text);
+  text-transform: uppercase;
+}
+
+.owner-badge {
+  background: var(--accent2);
+  color: var(--bg);
+  font-size: 0.5rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  box-shadow: 0 0 8px var(--accent2);
+  vertical-align: middle;
+}
+
+.logout-btn {
+  font-family: var(--body-font);
+  font-size: 0.55rem;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-decoration: none;
+  text-transform: uppercase;
+  border: 1px solid var(--text-dim);
+  padding: 4px 10px;
+  border-radius: var(--radius);
+  transition: var(--transition);
+}
+
+.logout-btn:hover {
+  color: var(--accent1);
+  border-color: var(--accent1);
+}
+
+/* ===== PRICE BADGE ===== */
+.price-badge {
+  margin-left: auto;
+  font-size: 0.6rem;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.price-badge strong {
+  color: var(--accent1);
+}
+
+.owner-free {
+  color: var(--accent2);
+  text-shadow: 0 0 8px var(--accent2);
+}
+
+/* ===== PAYMENT MODAL ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-box {
+  background: var(--surface);
+  border: 1px solid var(--accent1);
+  border-radius: var(--radius);
+  padding: 32px;
+  width: min(420px, 90vw);
+  box-shadow: 0 0 40px var(--accent1)44;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modal-box h3 {
+  font-family: var(--header-font);
+  font-size: 1rem;
+  color: var(--accent1);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow: 0 0 10px var(--accent1);
+}
+
+.modal-sound-name {
+  font-size: 0.7rem;
+  color: var(--text);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.pay-cost {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+
+.pay-cost strong {
+  color: var(--accent1);
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-field label {
+  font-size: 0.55rem;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.modal-field input {
+  background: var(--bg2);
+  border: 1px solid var(--accent1)66;
+  color: var(--text);
+  font-family: var(--body-font);
+  font-size: 0.7rem;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  outline: none;
+  transition: var(--transition);
+  letter-spacing: 3px;
+}
+
+.modal-field input:focus {
+  border-color: var(--accent1);
+  box-shadow: 0 0 8px var(--accent1)66;
+}
+
+.pay-error {
+  font-size: 0.6rem;
+  color: #ff4444;
+  letter-spacing: 1px;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-primary {
+  background: var(--accent1);
+  color: var(--bg);
+  border: none;
+  font-family: var(--body-font);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 0 12px var(--accent1)66;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0 20px var(--accent1);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--text-dim);
+  font-family: var(--body-font);
+  font-size: 0.6rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-secondary:hover {
+  color: var(--text);
+  border-color: var(--text);
+}

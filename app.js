@@ -1,86 +1,58 @@
 require('dotenv').config();
-const express = require('express');
-const app = express();
-const port = 3000;
-const jwt = require('jsonwebtoken');
-const session = require('express-session');
+const express  = require('express');
+const app      = express();
+const port     = process.env.PORT || 3000;
+const session  = require('express-session');
+const socketManager = require('./utils/socketManager');
+const authRouter    = require('./utils/auth');
+const soundsRouter  = require('./routes/sounds');
+const playRouter    = require('./routes/play');
+const { isOwner }   = require('./utils/owners');
+const { isAuthenticated } = require('./utils/middleware');
 
 const FORMPIX_URL = process.env.formpixUrl;
-const API_KEY = process.env.apiKey;
+const FORMBAR_URL = process.env.formbarUrl;
+const POOL_ID     = Number(process.env.poolID);
+const PRICE       = Number(process.env.price) || 0;
 
-if (!FORMPIX_URL || !FORMPIX_URL.startsWith('http')) {
-  console.error(`[Config] ERROR: formpixUrl is invalid or missing: "${FORMPIX_URL}"`);
-  console.error('[Config] Check your .env file — it should be: formpixUrl=http://localhost:421');
+// --- Validate config ---
+if (!FORMPIX_URL?.startsWith('http')) {
+  console.error(`[Config] ERROR: formpixUrl is invalid: "${FORMPIX_URL}"`);
 } else {
   console.log(`[Config] Formpix URL: ${FORMPIX_URL}`);
 }
+if (!POOL_ID || isNaN(POOL_ID)) {
+  console.error('[Config] ERROR: poolID is not set or invalid in .env');
+} else {
+  console.log(`[Config] Pool ID: ${POOL_ID}`);
+}
+console.log(`[Config] Sound price: ${PRICE} Digipogs`);
 
+// --- Connect to Formbar socket ---
+socketManager.connect(FORMBAR_URL);
+
+// --- Middleware ---
 app.set('view engine', 'ejs');
 app.use(express.static('public'));
 app.use(express.json());
 app.use(session({
-  secret: 'secetnobodywillknowthisonebecauseitsocool',
+  secret: process.env.SESSION_SECRET || 'soundbar-secret',
   resave: false,
   saveUninitialized: false
 }));
 
-app.get('/', (req, res) => {
-  res.render('index.ejs');
-});
+// --- Routes ---
+app.use(authRouter);
+app.use(soundsRouter);
+app.use(playRouter);
 
-// --- Formpix proxy: GET /api/sounds ---
-app.get('/api/sounds', async (req, res) => {
-  try {
-    console.log(`[Formpix] GET ${FORMPIX_URL}/api/getSounds`);
-    const response = await fetch(`${FORMPIX_URL}/api/getSounds`, {
-      method: 'GET',
-      headers: {
-        'API': API_KEY,
-        'Content-Type': 'application/json'
-      }
-    });
-    console.log(`[Formpix] Response status: ${response.status} ${response.statusText}`);
-    const data = await response.json();
-    console.log('[Formpix] Response data:', JSON.stringify(data, null, 2));
-    res.json(data);
-  } catch (err) {
-    console.error('Formpix /getSounds error:', err);
-    res.status(502).json({ error: 'Failed to fetch sounds from Formpix.' });
-  }
-});
-
-// --- Formpix proxy: POST /api/play ---
-app.post('/api/play', async (req, res) => {
-  const { sfx, bgm } = req.body;
-
-  if (!sfx && !bgm) {
-    return res.status(400).json({ error: 'Must provide sfx or bgm.' });
-  }
-
-  const body = {};
-  if (sfx) body.sfx = sfx;
-  if (bgm) body.bgm = bgm;
-  console.log(
-    JSON.stringify(body)
-  )
-  console.log('[/api/play] Playing sound:', body);
-  console.log(`${FORMPIX_URL}/api/playSound?sfx=${encodeURIComponent(sfx)}`)
-
-  try {
-    const response = await fetch(`${FORMPIX_URL}/api/playSound?sfx=${encodeURIComponent(sfx)}`, {
-      method: 'POST',
-      headers: {
-        'API': API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
-    console.log('[/api/play] Formpix response:', response.status, response.statusText);
-    res.status(response.status).json({ status: response.status });
-  } catch (err) {
-    console.error('[/api/play] Error:', err);
-    res.status(500).json({ error: 'Failed to contact Formpix.' });
-  }
+// --- Main Page ---
+app.get('/', isAuthenticated, (req, res) => {
+  res.render('index', {
+    user:  req.session.user,
+    owner: isOwner(req.session.userId),
+    price: PRICE
+  });
 });
 
 app.listen(port, () => {
