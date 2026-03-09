@@ -9,8 +9,7 @@ const router  = express.Router();
 const jwt     = require('jsonwebtoken');
 
 const FORMBAR_URL = process.env.formbarUrl;
-const PORT        = process.env.PORT || 3000;
-const THIS_URL    = `http://172.16.3.118:${PORT}`;
+const THIS_URL    = process.env.thisURL;
 const AUTH_URL    = `${FORMBAR_URL}/oauth`;
 
 // GET /login

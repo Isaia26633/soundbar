@@ -38,7 +38,11 @@
       <% if (owner) { %>
         <span class="owner-free">&#9733; Owner &mdash; Free Plays</span>
       <% } else { %>
-        <span>Cost: <strong><%= price %> Digipogs</strong> per sound</span>
+        <span class="ticket-info">
+          <span id="ticket-balance"><%= tickets %></span> tickets
+          &nbsp;&bull;&nbsp;
+          <a href="/shop" class="shop-link">Buy more</a>
+        </span>
       <% } %>
     </div>
   </div>
@@ -53,26 +57,51 @@
   <!-- ===== PAYMENT MODAL ===== -->
   <div id="pay-modal" class="modal-overlay" style="display:none;">
     <div class="modal-box">
-      <h3>Pay to Play</h3>
+      <h3>Play Sound</h3>
       <p id="pay-modal-sound" class="modal-sound-name"></p>
-      <p class="pay-cost">Cost: <strong><%= price %> Digipogs</strong></p>
-      <div class="modal-field">
-        <label for="pay-pin">Digipog PIN</label>
-        <input type="password" id="pay-pin" inputmode="numeric" maxlength="6"
-          placeholder="Enter your PIN"
-          oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+
+      <!-- Two payment options -->
+      <div id="no-tickets-notice" class="no-tickets-notice" style="display:none;">
+        You don't have enough tickets.
+        <a href="/shop" class="notice-shop-link">Buy a pack</a> or pay directly below.
       </div>
+      <div class="pay-options">
+        <button id="opt-tickets" class="pay-opt">
+          <span class="opt-title">Use Tickets</span>
+          <span id="modal-ticket-count" class="opt-sub">... tickets</span>
+          <span class="opt-cost">5 per play</span>
+        </button>
+        <button id="opt-digi" class="pay-opt">
+          <span class="opt-title">Pay Digipogs</span>
+          <span class="opt-sub">flat rate</span>
+          <span class="opt-cost">25 Digipogs</span>
+        </button>
+      </div>
+
+      <!-- PIN (only shown in digi mode) -->
+      <div id="pin-section" style="display:none;">
+        <div class="modal-field">
+          <label for="pay-pin">PIN</label>
+          <input type="password" id="pay-pin" inputmode="numeric" maxlength="6"
+            placeholder="Enter your PIN"
+            oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+        </div>
+        <label class="save-pin-row">
+          <input type="checkbox" id="save-pin">
+          <span>Remember PIN</span>
+        </label>
+      </div>
+
       <p id="pay-error" class="pay-error" style="display:none;"></p>
       <div class="modal-actions">
         <button id="pay-cancel" class="btn-secondary">Cancel</button>
-        <button id="pay-confirm" class="btn-primary">Pay &amp; Play</button>
+        <button id="pay-confirm" class="btn-primary">Play</button>
       </div>
     </div>
   </div>
 
   <script>
-    window.IS_OWNER    = <%- JSON.stringify(owner) %>;
-    window.SOUND_PRICE = <%- JSON.stringify(price) %>;
+    window.IS_OWNER = <%- JSON.stringify(owner) %>;
   </script>
   <script src="/js/main.js"></script>
 </body>

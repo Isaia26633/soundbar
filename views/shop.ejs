@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soundbar — Shop</title>
+  <link rel="icon" type="image/x-icon" href="/img/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+  <header>
+    <a href="/" class="logo logo-link">&#9654;&nbsp;Soundbar</a>
+    <div class="header-right">
+      <div class="theme-toggle" role="group" aria-label="Theme">
+        <button id="theme-dark" class="active">DARK</button>
+        <button id="theme-light">LIGHT</button>
+      </div>
+      <div class="user-info">
+        <span class="username">
+          <%= user %><% if (owner) { %>&nbsp;<span class="owner-badge">OWNER</span><% } %>
+        </span>
+        <a href="/logout" class="logout-btn">Logout</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="controls-bar">
+    <span class="shop-back"><a href="/">&#8592; Back to Soundbar</a></span>
+    <div class="price-badge">
+      <span class="ticket-info">Balance: <strong id="ticket-balance-display"><%= tickets %></strong> tickets</span>
+    </div>
+  </div>
+
+  <main class="shop-main">
+    <h2 class="shop-title">Ticket Shop</h2>
+    <p class="shop-subtitle">5 tickets = 1 play &nbsp;&bull;&nbsp; Or pay 25 Digipogs flat any time</p>
+
+    <div class="pack-grid">
+      <% Object.entries(packs).forEach(([packId, pack]) => { %>
+      <div class="pack-card">
+        <div class="pack-discount">-<%= pack.discount %>%</div>
+        <div class="pack-img">
+          <img src="/img/ticket.png" alt="tickets" class="ticket-img"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="ticket-img-fallback" style="display:none;">
+            <svg viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="2" width="96" height="56" rx="10" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="6 3"/>
+              <circle cx="22" cy="30" r="1" fill="none" stroke="currentColor" stroke-width="2"/>
+              <line x1="34" y1="8" x2="34" y2="52" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+              <text x="66" y="26" text-anchor="middle" font-size="11" fill="currentColor" font-family="monospace" letter-spacing="1">TICKET</text>
+              <text x="66" y="44" text-anchor="middle" font-size="18" fill="currentColor" font-family="monospace" font-weight="700"><%= pack.tickets %>x</text>
+            </svg>
+          </div>
+        </div>
+        <div class="pack-label"><%= pack.label %></div>
+        <div class="pack-tickets"><%= pack.tickets %> <span>tickets</span></div>
+        <div class="pack-price"><%= pack.cost %> <span>Digipogs</span></div>
+        <div class="pack-per">
+          <%= (pack.cost / pack.tickets * 5).toFixed(1) %> Digipogs/play
+          <span class="pack-per-strike">25 Digipogs</span>
+        </div>
+        <button class="btn-primary buy-btn" data-pack="<%= packId %>"
+          data-label="<%= pack.label %>" data-tickets="<%= pack.tickets %>" data-cost="<%= pack.cost %>">
+          Buy Pack
+        </button>
+      </div>
+      <% }) %>
+    </div>
+  </main>
+
+  <!-- BUY MODAL -->
+  <div id="buy-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <h3>Buy Tickets</h3>
+      <p id="buy-modal-pack" class="modal-sound-name"></p>
+      <p class="pay-cost">Cost: <strong id="buy-modal-cost"></strong> Digipogs</p>
+      <div class="modal-field">
+        <label for="buy-pin">PIN</label>
+        <input type="password" id="buy-pin" inputmode="numeric" maxlength="6"
+          placeholder="Enter your PIN"
+          oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+      </div>
+      <label class="save-pin-row">
+        <input type="checkbox" id="buy-save-pin">
+        <span>Remember PIN</span>
+      </label>
+      <p id="buy-error" class="pay-error" style="display:none;"></p>
+      <div class="modal-actions">
+        <button id="buy-cancel" class="btn-secondary">Cancel</button>
+        <button id="buy-confirm" class="btn-primary">Buy &amp; Add Tickets</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const btnDark  = document.getElementById('theme-dark');
+    const btnLight = document.getElementById('theme-light');
+    function setTheme(t) {
+      document.body.classList.toggle('light', t === 'light');
+      btnDark.classList.toggle('active',  t !== 'light');
+      btnLight.classList.toggle('active', t === 'light');
+      localStorage.setItem('sb-theme', t);
+    }
+    btnDark.addEventListener('click',  () => setTheme('dark'));
+    btnLight.addEventListener('click', () => setTheme('light'));
+    setTheme(localStorage.getItem('sb-theme') || 'dark');
+
+    const buyModal   = document.getElementById('buy-modal');
+    const buyPin     = document.getElementById('buy-pin');
+    const buyError   = document.getElementById('buy-error');
+    const buyPack    = document.getElementById('buy-modal-pack');
+    const buyCost    = document.getElementById('buy-modal-cost');
+    const buyConfirm = document.getElementById('buy-confirm');
+    const buyCancel  = document.getElementById('buy-cancel');
+    const buySavePin = document.getElementById('buy-save-pin');
+    const balanceEl  = document.getElementById('ticket-balance-display');
+
+    let pendingPackId = null;
+
+    function openBuyModal(btn) {
+      pendingPackId = btn.dataset.pack;
+      buyPack.textContent  = `${btn.dataset.label} — ${btn.dataset.tickets} tickets`;
+      buyCost.textContent  = btn.dataset.cost;
+      buyPin.value         = localStorage.getItem('sb-pin') || '';
+      buySavePin.checked   = !!localStorage.getItem('sb-pin');
+      buyError.style.display = 'none';
+      buyModal.style.display = 'flex';
+      buyPin.focus();
+    }
+
+    function closeBuyModal() {
+      buyModal.style.display = 'none';
+      pendingPackId = null;
+    }
+
+    document.querySelectorAll('.buy-btn').forEach(btn =>
+      btn.addEventListener('click', () => openBuyModal(btn))
+    );
+    buyCancel.addEventListener('click', closeBuyModal);
+    buyModal.addEventListener('click', (e) => { if (e.target === buyModal) closeBuyModal(); });
+    buyPin.addEventListener('keydown', (e) => { if (e.key === 'Enter') buyConfirm.click(); });
+
+    buyConfirm.addEventListener('click', async () => {
+      const pin = buyPin.value.trim();
+      if (!pin) {
+        buyError.textContent = 'Please enter your PIN.';
+        buyError.style.display = 'block';
+        return;
+      }
+
+      buyConfirm.disabled = true;
+      buyConfirm.textContent = 'Processing...';
+      buyError.style.display = 'none';
+
+      try {
+        const res  = await fetch('/api/tickets/buy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ packId: pendingPackId, pin })
+        });
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok) {
+          if (buySavePin.checked) localStorage.setItem('sb-pin', pin);
+          else                    localStorage.removeItem('sb-pin');
+          balanceEl.textContent = data.tickets;
+          closeBuyModal();
+          balanceEl.style.color = 'var(--accent3)';
+          setTimeout(() => (balanceEl.style.color = ''), 1500);
+        } else {
+          buyError.textContent   = data.error || 'Purchase failed.';
+          buyError.style.display = 'block';
+        }
+      } catch {
+        buyError.textContent   = 'Network error. Please try again.';
+        buyError.style.display = 'block';
+      } finally {
+        buyConfirm.disabled    = false;
+        buyConfirm.textContent = 'Buy & Add Tickets';
+      }
+    });
+  </script>
+</body>
+</html>

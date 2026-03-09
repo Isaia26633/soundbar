@@ -5,15 +5,16 @@ const port     = process.env.PORT || 3000;
 const session  = require('express-session');
 const socketManager = require('./utils/socketManager');
 const authRouter    = require('./utils/auth');
-const soundsRouter  = require('./routes/sounds');
-const playRouter    = require('./routes/play');
-const { isOwner }   = require('./utils/owners');
+const soundsRouter   = require('./routes/sounds');
+const playRouter     = require('./routes/play');
+const ticketsRouter  = require('./routes/tickets');
+const { isOwner }    = require('./utils/owners');
+const { getTickets } = require('./utils/db');
 const { isAuthenticated } = require('./utils/middleware');
 
 const FORMPIX_URL = process.env.formpixUrl;
 const FORMBAR_URL = process.env.formbarUrl;
 const POOL_ID     = Number(process.env.poolID);
-const PRICE       = Number(process.env.price) || 0;
 
 // --- Validate config ---
 if (!FORMPIX_URL?.startsWith('http')) {
@@ -26,7 +27,6 @@ if (!POOL_ID || isNaN(POOL_ID)) {
 } else {
   console.log(`[Config] Pool ID: ${POOL_ID}`);
 }
-console.log(`[Config] Sound price: ${PRICE} Digipogs`);
 
 // --- Connect to Formbar socket ---
 socketManager.connect(FORMBAR_URL);
@@ -45,13 +45,32 @@ app.use(session({
 app.use(authRouter);
 app.use(soundsRouter);
 app.use(playRouter);
+app.use(ticketsRouter);
+
+const PACKS = {
+  starter: { tickets: 20,  cost: 80,  label: 'Starter Pack', discount: 20 },
+  value:   { tickets: 50,  cost: 175, label: 'Value Pack',   discount: 30 },
+  max:     { tickets: 100, cost: 300, label: 'Max Pack',     discount: 40 },
+};
 
 // --- Main Page ---
-app.get('/', isAuthenticated, (req, res) => {
+app.get('/', isAuthenticated, async (req, res) => {
+  const tickets = await getTickets(req.session.userId).catch(() => 0);
   res.render('index', {
-    user:  req.session.user,
-    owner: isOwner(req.session.userId),
-    price: PRICE
+    user:    req.session.user,
+    owner:   isOwner(req.session.userId),
+    tickets
+  });
+});
+
+// --- Shop Page ---
+app.get('/shop', isAuthenticated, async (req, res) => {
+  const tickets = await getTickets(req.session.userId).catch(() => 0);
+  res.render('shop', {
+    user:    req.session.user,
+    owner:   isOwner(req.session.userId),
+    tickets,
+    packs:   PACKS
   });
 });
 

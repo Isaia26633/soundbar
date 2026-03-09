@@ -4,6 +4,7 @@
 const btnDark  = document.getElementById('theme-dark');
 const btnLight = document.getElementById('theme-light');
 
+
 function setTheme(theme) {
   if (theme === 'light') {
     document.body.classList.add('light');
@@ -35,60 +36,123 @@ function formatLabel(filename) {
 }
 
 
+// --- Ticket Balance ---
+const ticketBalanceEl = document.getElementById('ticket-balance');
+let currentTickets = 0;
+
+async function refreshTickets() {
+  if (window.IS_OWNER) return;
+  try {
+    const res = await fetch('/api/tickets');
+    if (!res.ok) return;
+    const data = await res.json();
+    currentTickets = data.tickets ?? 0;
+    if (ticketBalanceEl) ticketBalanceEl.textContent = currentTickets;
+    return currentTickets;
+  } catch {
+    return currentTickets;
+  }
+}
+
+
 // --- Payment Modal ---
-const payModal      = document.getElementById('pay-modal');
-const payPin        = document.getElementById('pay-pin');
-const payError      = document.getElementById('pay-error');
-const payModalSound = document.getElementById('pay-modal-sound');
-const payConfirm    = document.getElementById('pay-confirm');
-const payCancel     = document.getElementById('pay-cancel');
+const payModal         = document.getElementById('pay-modal');
+const payPin           = document.getElementById('pay-pin');
+const payError         = document.getElementById('pay-error');
+const payModalSound    = document.getElementById('pay-modal-sound');
+const payConfirm       = document.getElementById('pay-confirm');
+const payCancel        = document.getElementById('pay-cancel');
+const optTickets       = document.getElementById('opt-tickets');
+const optDigi          = document.getElementById('opt-digi');
+const pinSection       = document.getElementById('pin-section');
+const modalTicketCount = document.getElementById('modal-ticket-count');
+const savePinCheck     = document.getElementById('save-pin');
+
+const noTicketsNotice  = document.getElementById('no-tickets-notice');
 
 let pendingSfx = null;
 let pendingBtn = null;
+let payMode    = 'tickets'; // 'tickets' | 'digi'
 
-function openPayModal(file, btn) {
+function setPayMode(mode) {
+  payMode = mode;
+  optTickets.classList.toggle('active', mode === 'tickets');
+  optDigi.classList.toggle('active',    mode === 'digi');
+  pinSection.style.display = mode === 'digi' ? 'block' : 'none';
+  if (mode === 'digi' && payPin) payPin.focus();
+}
+
+optTickets?.addEventListener('click', () => { if (!optTickets.disabled) setPayMode('tickets'); });
+optDigi?.addEventListener('click',    () => setPayMode('digi'));
+
+async function openPayModal(file, btn) {
   pendingSfx = file;
   pendingBtn = btn;
   payModalSound.textContent = formatLabel(file);
-  payPin.value = '';
-  payError.style.display = 'none';
+  payError.style.display    = 'none';
+
+  // Pre-fill saved PIN
+  if (payPin) payPin.value = localStorage.getItem('sb-pin') || '';
+  if (savePinCheck) savePinCheck.checked = !!localStorage.getItem('sb-pin');
+
+  // Fetch latest balance and update modal
+  const balance = await refreshTickets();
+  if (modalTicketCount) modalTicketCount.textContent = `${balance} tickets`;
+  const hasTickets = balance >= 5;
+  if (optTickets) optTickets.disabled = !hasTickets;
+  if (noTicketsNotice) noTicketsNotice.style.display = hasTickets ? 'none' : 'block';
+
+  // Auto-select best mode
+  setPayMode(hasTickets ? 'tickets' : 'digi');
+
   payModal.style.display = 'flex';
-  payPin.focus();
 }
 
 function closePayModal() {
   payModal.style.display = 'none';
-  if (pendingBtn) {
-    pendingBtn.classList.remove('playing');
-    pendingBtn = null;
-  }
+  if (pendingBtn) { pendingBtn.classList.remove('playing'); pendingBtn = null; }
   pendingSfx = null;
 }
 
 payCancel?.addEventListener('click', closePayModal);
-payModal?.addEventListener('click', (e) => { if (e.target === payModal) closePayModal(); });
-payPin?.addEventListener('keydown', (e) => { if (e.key === 'Enter') payConfirm.click(); });
+payModal?.addEventListener('click',  (e) => { if (e.target === payModal) closePayModal(); });
+payPin?.addEventListener('keydown',  (e) => { if (e.key === 'Enter') payConfirm.click(); });
+
+savePinCheck?.addEventListener('change', () => {
+  if (savePinCheck.checked && payPin?.value)
+    localStorage.setItem('sb-pin', payPin.value);
+  else
+    localStorage.removeItem('sb-pin');
+});
 
 payConfirm?.addEventListener('click', async () => {
-  const pin = payPin.value.trim();
-  if (!pin) {
-    payError.textContent = 'Please enter your PIN.';
-    payError.style.display = 'block';
-    return;
-  }
-
-  payConfirm.disabled = true;
-  payConfirm.textContent = 'Processing...';
   payError.style.display = 'none';
 
-  console.log('[Pay] Submitting payment for:', pendingSfx);
+  let body;
+  if (payMode === 'tickets') {
+    body = { sfx: pendingSfx, useTickets: true };
+  } else {
+    const pin = payPin.value.trim();
+    if (!pin) {
+      payError.textContent   = 'Please enter your PIN.';
+      payError.style.display = 'block';
+      return;
+    }
+    if (savePinCheck?.checked) localStorage.setItem('sb-pin', pin);
+    else                       localStorage.removeItem('sb-pin');
+    body = { sfx: pendingSfx, pin };
+  }
+
+  payConfirm.disabled    = true;
+  payConfirm.textContent = 'Processing...';
+
   try {
-    const res = await fetch('/api/play', {
-      method: 'POST',
+    const res  = await fetch('/api/play', {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sfx: pendingSfx, pin })
+      body:    JSON.stringify(body)
     });
-    console.log('[Pay] Response:', res.status, res.statusText);
+    const data = await res.json().catch(() => ({}));
 
     if (res.status === 200) {
       payModal.style.display = 'none';
@@ -97,25 +161,29 @@ payConfirm?.addEventListener('click', async () => {
         const played = pendingBtn;
         setTimeout(() => played.classList.remove('playing'), 2000);
       }
+      // Update ticket balance from response
+      if (data.tickets != null) {
+        currentTickets = data.tickets;
+        if (ticketBalanceEl) ticketBalanceEl.textContent = currentTickets;
+      }
       pendingSfx = null;
       pendingBtn = null;
     } else if (res.status === 429) {
-      payError.textContent = 'Another sound is already playing. Try again later.';
+      payError.textContent   = 'Another sound is already playing. Try again later.';
       payError.style.display = 'block';
       if (pendingBtn) pendingBtn.classList.remove('playing');
     } else {
-      const data = await res.json().catch(() => ({}));
-      payError.textContent = data.error || 'Payment failed. Please try again.';
+      payError.textContent   = data.error || 'Payment failed. Please try again.';
       payError.style.display = 'block';
       if (pendingBtn) pendingBtn.classList.remove('playing');
     }
   } catch {
-    payError.textContent = 'Network error. Please try again.';
+    payError.textContent   = 'Network error. Please try again.';
     payError.style.display = 'block';
     if (pendingBtn) pendingBtn.classList.remove('playing');
   } finally {
-    payConfirm.disabled = false;
-    payConfirm.textContent = 'Pay & Play';
+    payConfirm.disabled    = false;
+    payConfirm.textContent = 'Play';
   }
 });
 
@@ -129,20 +197,16 @@ async function ownerPlay(file, btn) {
   btn.classList.add('playing');
   setTimeout(() => btn.classList.remove('playing'), 2000);
 
-  console.log('[Play] Owner play:', file);
   try {
     const res = await fetch('/api/play', {
-      method: 'POST',
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sfx: file })
+      body:    JSON.stringify({ sfx: file })
     });
-    console.log('[Play] Response:', res.status, res.statusText);
     if (res.status === 429) {
       btn.classList.remove('playing');
       alert('Another sound is already playing. Try again later.');
     } else if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      console.error('[Play] Error from server:', data);
       btn.classList.remove('playing');
       btn.style.borderColor = 'red';
       setTimeout(() => (btn.style.borderColor = ''), 800);
@@ -167,43 +231,25 @@ function attachAudioLogic(btn) {
     if (cooldown) return;
     cooldown = true;
     setTimeout(() => { cooldown = false; }, 2000);
-
-    if (window.IS_OWNER) {
-      ownerPlay(file, btn);
-    } else {
-      openPayModal(file, btn);
-    }
+    if (window.IS_OWNER) ownerPlay(file, btn);
+    else                 openPayModal(file, btn);
   });
 }
 
 
-// --- Fetch Sounds from backend ---
+// --- Fetch Sounds ---
 function fetchSounds() {
-  console.log('[Sounds] Fetching /api/sounds...');
   return fetch('/api/sounds')
-    .then(response => {
-      console.log('[Sounds] Response status:', response.status, response.statusText);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
-    })
-    .then(data => {
-      console.log('[Sounds] Raw data from server:', data);
-      const sfx = data.sfx || [];
-      console.log(`[Sounds] ${sfx.length} SFX found:`, sfx);
-      return sfx;
-    })
-    .catch(err => {
-      console.error('[Sounds] Failed to fetch sounds:', err);
-      return [];
-    });
+    .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+    .then(data => data.sfx || [])
+    .catch(err => { console.error('[Sounds] Failed:', err); return []; });
 }
 
 
 // --- Build Sound Grid ---
 function buildSoundGrid(sfxList) {
-  console.log('[Grid] Building grid with', sfxList.length, 'sounds');
   const grid = document.querySelector('.sound-grid');
-  if (!grid) { console.error('[Grid] .sound-grid element not found in DOM!'); return; }
+  if (!grid) return;
 
   sfxList
     .filter(filename => filename !== 'disabled')
@@ -239,5 +285,7 @@ document.getElementById('search').addEventListener('input', function () {
 
 
 // --- Init ---
+if (!window.IS_OWNER) refreshTickets();
 fetchSounds().then(buildSoundGrid);
+
 
